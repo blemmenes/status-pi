@@ -1,0 +1,16 @@
+[Unit]
+Description=Busy light (Unicorn HAT Mini)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=busylight
+Group=busylight
+SupplementaryGroups=spi gpio
+ExecStart=/opt/busylight/venv/bin/python -m busylight --config /etc/busylight/config.toml
+Environment=PYTHONUNBUFFERED=1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

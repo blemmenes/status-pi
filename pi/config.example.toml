@@ -1,0 +1,25 @@
+brightness = 0.25            # float 0.0-1.0, passed to set_brightness
+rotation = 0                 # one of 0, 90, 180, 270, passed to set_rotation
+
+[http]
+bind = "0.0.0.0"
+port = 8080
+token = "change-me"          # shared secret; Hammerspoon sends "Authorization: Bearer <token>"
+
+[mic]
+ttl_seconds = 90             # mic-on expires if not refreshed
+
+[bambuddy]
+base_url = "http://sinkhole.local:8000/api/v1"   # no trailing slash; strip one if present
+api_key = "replace-me"       # Bambuddy key (Read Status + Control Printer); never commit the real one
+poll_interval_seconds = 10
+timeout_seconds = 5
+
+[[printers]]                 # order defines the on-screen number (1, 2, ...)
+id = 1                       # P2S (Office)
+color = [0, 160, 255]        # cyan
+
+# Add more printers as extra blocks, e.g.:
+# [[printers]]
+# id = 2
+# color = [180, 0, 255]      # violet

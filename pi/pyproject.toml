@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "busylight"
+version = "0.1.0"
+description = "Unicorn HAT Mini busy light and Bambuddy print status display"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+pi = ["unicornhatmini==0.0.2"]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["busylight"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
