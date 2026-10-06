@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 
 from .config import PrinterConfig
 from .font import Color, draw_glyph
@@ -33,11 +32,11 @@ FLASH_INTERVAL = 0.15
 PAUSE_BLINK_INTERVAL = 0.5
 PROGRESS_SCALE = 0.4
 
-# ETA layout
+# Countdown layout
+MAX_COUNTDOWN_MINUTES = 99 * 60 + 59  # four digits: 99:59
 DIGIT_X = (0, 4, 10, 14)  # hour tens, hour ones, minute tens, minute ones
 COLON = ((8, 1), (8, 3))
 INDEX_ROW = 5
-PM_PIXEL = (16, 5)
 PROGRESS_ROW = 6
 IDLE_PIXEL = (16, 6)
 PLATE_DIGIT_ORIGIN = (7, 1)
@@ -48,6 +47,7 @@ class ComposeResult:
     frame: Frame
     screen: str  # "mic" | "feedback" | "plate_clear" | "eta" | "idle"
     shown_plate_printer_id: int | None
+    shown_print_printer_id: int | None = None  # printer whose countdown is on screen ("eta")
 
 
 def blank_frame() -> Frame:
@@ -66,9 +66,7 @@ def _cycle_pick(items: list[tuple[PrinterConfig, PrinterSnapshot]], now: float):
     return items[int(now // CYCLE_SECONDS) % len(items)]
 
 
-def compose(
-    view: StateView, printers: tuple[PrinterConfig, ...], now: float, wall: datetime
-) -> ComposeResult:
+def compose(view: StateView, printers: tuple[PrinterConfig, ...], now: float) -> ComposeResult:
     if view.mic_active:
         return ComposeResult(filled_frame(RED), "mic", None)
 
@@ -112,25 +110,22 @@ def compose(
                 for x in DIGIT_X:
                     draw_glyph(frame, "-", x, 0, col)
         else:
-            eta = wall + timedelta(minutes=remaining)
-            h12 = eta.hour % 12 or 12
+            hours, minutes = divmod(min(remaining, MAX_COUNTDOWN_MINUTES), 60)
             if show_digits:
-                if h12 >= 10:
-                    draw_glyph(frame, str(h12 // 10), DIGIT_X[0], 0, col)
-                draw_glyph(frame, str(h12 % 10), DIGIT_X[1], 0, col)
+                if hours >= 10:
+                    draw_glyph(frame, str(hours // 10), DIGIT_X[0], 0, col)
+                draw_glyph(frame, str(hours % 10), DIGIT_X[1], 0, col)
                 for x, y in COLON:
                     frame[y][x] = col
-                draw_glyph(frame, str(eta.minute // 10), DIGIT_X[2], 0, col)
-                draw_glyph(frame, str(eta.minute % 10), DIGIT_X[3], 0, col)
-            if eta.hour >= 12:
-                frame[PM_PIXEL[1]][PM_PIXEL[0]] = WHITE
+                draw_glyph(frame, str(minutes // 10), DIGIT_X[2], 0, col)
+                draw_glyph(frame, str(minutes % 10), DIGIT_X[3], 0, col)
         if multi:
             frame[INDEX_ROW][2 * (printer.index - 1)] = col
         n = max(0, min(WIDTH, int((sel.progress or 0) * WIDTH // 100)))
         dim = _scale(col, PROGRESS_SCALE)
         for x in range(n):
             frame[PROGRESS_ROW][x] = dim
-        return ComposeResult(frame, "eta", None)
+        return ComposeResult(frame, "eta", None, sel.printer_id)
 
     frame = blank_frame()
     frame[IDLE_PIXEL[1]][IDLE_PIXEL[0]] = IDLE_OK if view.bambuddy_ok else IDLE_ERR

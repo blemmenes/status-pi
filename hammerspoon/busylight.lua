@@ -1,6 +1,10 @@
 -- BUSY LIGHT
 --
--- Reports "any audio input device in use" to the Raspberry Pi busy light.
+-- Reports "some app is recording audio input" to the Raspberry Pi busy light.
+-- Playback never counts, even on devices with both input and output (USB
+-- interfaces, Bluetooth headsets). Detection runs in the `micwatch` helper next
+-- to this file's real path; build it with:
+--   swiftc -O -o hammerspoon/micwatch hammerspoon/micwatch.swift
 -- Needs `busylight = { url = "http://<pi-host>:8080", token = "<http.token>" }`
 -- in ~/.hammerspoon/.secrets.json (loaded by secrets.lua into hs.settings "secrets").
 --
@@ -13,12 +17,25 @@ local M = {}
 M.devices = {}   -- UID -> hs.audiodevice; must stay referenced, watcher state lives on the object
 M.lastSent = nil
 M.ignore = {}
+M.inputActive = false   -- latest micwatch report: some process is capturing audio input
+M.helper = nil          -- running micwatch hs.task
 
 local HEARTBEAT_SECONDS = 30
+local HELPER_RESTART_SECONDS = 5
 
 local url, token
 
+-- Real path (follows the ~/.hammerspoon symlink) so the helper is found in the repo.
+local helperPath = hs.fs.pathToAbsolute(debug.getinfo(1, "S").source:sub(2)):match("^(.*)/") .. "/micwatch"
+
 local function anyInUse()
+  if not M.inputActive then
+    return false
+  end
+  if next(M.ignore) == nil then
+    return true
+  end
+  -- Capture is process-wide; only count it if a non-ignored input device is running.
   for _, dev in pairs(M.devices) do
     if not M.ignore[dev:name()] and dev:inUse() then
       return true
@@ -63,6 +80,30 @@ local function rebuild()
   end
 end
 
+local function startHelper()
+  local task
+  task = hs.task.new(helperPath, function(code, _, stderr)
+    if M.helper ~= task then
+      return
+    end
+    M.helper = nil
+    print("busylight: micwatch exited (" .. tostring(code) .. ") " .. tostring(stderr)
+      .. "; restarting in " .. HELPER_RESTART_SECONDS .. " s")
+    M.inputActive = false
+    M.evaluate()
+    M.helperRestart = hs.timer.doAfter(HELPER_RESTART_SECONDS, startHelper)
+  end, function(_, stdout)
+    local last = stdout and stdout:match("([01])%s*$")
+    if last then
+      M.inputActive = last == "1"
+      M.evaluate()
+    end
+    return true
+  end)
+  M.helper = task
+  task:start()
+end
+
 function M.start(opts)
   opts = opts or {}
   local secrets = hs.settings.get("secrets")
@@ -73,6 +114,10 @@ function M.start(opts)
   end
   url = cfg.url:gsub("/+$", "")
   token = cfg.token
+  if not hs.fs.attributes(helperPath) then
+    print("busylight: missing " .. helperPath .. "; build it: swiftc -O -o " .. helperPath .. " " .. helperPath .. ".swift")
+    return
+  end
 
   M.ignore = {}
   for _, name in ipairs(opts.ignore or {}) do
@@ -101,6 +146,7 @@ function M.start(opts)
   end):start()
 
   rebuild()
+  startHelper()
   send(anyInUse())
 end
 

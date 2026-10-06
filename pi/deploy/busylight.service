@@ -7,6 +7,9 @@ After=network-online.target
 User=busylight
 Group=busylight
 SupplementaryGroups=spi gpio
+# lgpio (gpiozero's pin factory) creates notification FIFOs in the working directory.
+RuntimeDirectory=busylight
+WorkingDirectory=/run/busylight
 ExecStart=/opt/busylight/venv/bin/python -m busylight --config /etc/busylight/config.toml
 Environment=PYTHONUNBUFFERED=1
 Restart=always

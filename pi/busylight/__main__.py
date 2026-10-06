@@ -8,10 +8,9 @@ import signal
 import sys
 import threading
 import time
-from datetime import datetime
 
 from .bambuddy import BambuddyClient, run_poller
-from .buttons import ClearPlateAction, start_hardware_buttons, start_stdin_buttons
+from .buttons import make_actions, start_hardware_buttons, start_stdin_buttons
 from .config import ConfigError, load_config
 from .http_api import start_http_server
 from .scenes import compose
@@ -25,7 +24,9 @@ log = logging.getLogger("busylight")
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="busylight")
     parser.add_argument("--config", required=True)
-    parser.add_argument("--fake-display", action="store_true", help="render to the terminal; type 'a' for button A")
+    parser.add_argument(
+        "--fake-display", action="store_true", help="render to the terminal; type a/x/y + Enter for buttons A/X/Y"
+    )
     parser.add_argument("--log-level", default="INFO")
     args = parser.parse_args(argv)
 
@@ -64,9 +65,9 @@ def main(argv: list[str] | None = None) -> int:
 
         display = UnicornDisplay(cfg.brightness, cfg.rotation)
 
-    action = ClearPlateAction(client, state)
-    # Held so gpiozero's Button is not garbage collected.
-    button_source = start_stdin_buttons(action) if args.fake_display else start_hardware_buttons(action)
+    actions = make_actions(client, state)
+    # Held so gpiozero's Buttons are not garbage collected.
+    button_source = start_stdin_buttons(actions) if args.fake_display else start_hardware_buttons(actions)
 
     def on_signal(signum: int, _frame: object) -> None:
         stop.set()
@@ -78,8 +79,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         while not stop.is_set():
             now = time.monotonic()
-            res = compose(state.view(now), cfg.printers, now, datetime.now().astimezone())
+            res = compose(state.view(now), cfg.printers, now)
             state.shown_plate_printer_id = res.shown_plate_printer_id
+            state.shown_print_printer_id = res.shown_print_printer_id
             state.last_screen = res.screen
             if res.frame != last_frame:
                 display.draw(res.frame)

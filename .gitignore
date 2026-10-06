@@ -5,3 +5,4 @@ __pycache__/
 build/
 pi/config.toml
 .pytest_cache/
+hammerspoon/micwatch

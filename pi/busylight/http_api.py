@@ -119,5 +119,6 @@ def _state_payload(cfg: Config, state: AppState) -> dict[str, Any]:
         "bambuddy_ok": view.bambuddy_ok,
         "screen": state.last_screen,
         "shown_plate_printer_id": state.shown_plate_printer_id,
+        "shown_print_printer_id": state.shown_print_printer_id,
         "printers": printers,
     }

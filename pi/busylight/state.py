@@ -47,6 +47,7 @@ class AppState:
         self._last_poll_ok_at: float | None = None
         self._feedback: Feedback | None = None
         self._shown_plate_printer_id: int | None = None
+        self._shown_print_printer_id: int | None = None
         self._last_screen = "idle"
         self.poll_now = threading.Event()
 
@@ -93,6 +94,16 @@ class AppState:
     def shown_plate_printer_id(self, value: int | None) -> None:
         with self._lock:
             self._shown_plate_printer_id = value
+
+    @property
+    def shown_print_printer_id(self) -> int | None:
+        with self._lock:
+            return self._shown_print_printer_id
+
+    @shown_print_printer_id.setter
+    def shown_print_printer_id(self, value: int | None) -> None:
+        with self._lock:
+            self._shown_print_printer_id = value
 
     @property
     def last_screen(self) -> str:

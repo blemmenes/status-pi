@@ -69,7 +69,14 @@ class BambuddyClient:
         )
 
     def clear_plate(self, printer_id: int) -> tuple[bool, int | None, str]:
-        req = self._request("POST", f"/printers/{printer_id}/clear-plate", data=b"")
+        return self._post(f"/printers/{printer_id}/clear-plate")
+
+    def set_print_speed(self, printer_id: int, mode: int) -> tuple[bool, int | None, str]:
+        """mode: 1=silent, 2=standard, 3=sport, 4=ludicrous."""
+        return self._post(f"/printers/{printer_id}/print-speed?mode={mode}")
+
+    def _post(self, path: str) -> tuple[bool, int | None, str]:
+        req = self._request("POST", path, data=b"")
         try:
             with urllib.request.urlopen(req, timeout=self._cfg.timeout_seconds) as resp:
                 status = resp.status

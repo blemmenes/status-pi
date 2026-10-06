@@ -55,5 +55,3 @@ systemctl restart busylight
 if [[ $NEW_CONFIG -eq 1 ]]; then
   echo "edit $CONF then: systemctl restart busylight"
 fi
-echo "Timezone: $(timedatectl show -p Timezone --value)"
-echo "ETA uses this timezone; set with: sudo timedatectl set-timezone America/Detroit"
